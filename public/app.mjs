@@ -7,13 +7,13 @@ function config(){return {start:$('start').value,end:$('end').value,amount:numbe
 function showRules(){const s=$('strategy').value;$('scheduleControls').hidden=s!=='sip';$('dipControls').hidden=s==='sip';$('sellControls').hidden=s!=='cycle';}
 function dirty(){$('dirty').hidden=false;}
 function chart(a,b){
-  const W=820,H=300,L=65,R=20,T=18,B=35,inner=W-L-R,height=H-T-B;
+  const W=Math.max(240,Math.round($('chart').getBoundingClientRect().width)),H=W<500?250:300,L=50,R=12,T=18,B=35,inner=W-L-R,height=H-T-B;
   const max=Math.max(...a.curve.map(p=>Math.max(p.value,p.invested)),...b.curve.map(p=>p.value))*1.08;
   const t0=Date.parse(a.start),span=Date.parse(a.end)-t0;
   const x=p=>L+(Date.parse(p.date)-t0)/span*inner,y=v=>T+height-v/max*height;
   const points=(arr,key)=>arr.map(p=>x(p).toFixed(2)+','+y(p[key]).toFixed(2)).join(' ');
   let grid='';for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);grid+=`<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="#edf0e9"/><text x="${L-12}" y="${yy+4}" text-anchor="end">${v>=1e7?(v/1e7).toFixed(1)+' Cr':v>=1e5?(v/1e5).toFixed(1)+' L':Math.round(v/1000)+' K'}</text>`;}
-  for(let i=0;i<5;i++){const index=Math.round(i*(a.curve.length-1)/4),p=a.curve[index];grid+=`<text x="${x(p)}" y="${H-7}" text-anchor="${i===0?'start':i===4?'end':'middle'}">${new Date(p.date).toLocaleDateString('en-GB',{month:'short',year:'numeric',timeZone:'UTC'})}</text>`;}
+  const ticks=W<500?3:5;for(let i=0;i<ticks;i++){const index=Math.round(i*(a.curve.length-1)/(ticks-1)),p=a.curve[index];grid+=`<text x="${x(p)}" y="${H-7}" text-anchor="${i===0?'start':i===ticks-1?'end':'middle'}">${new Date(p.date).toLocaleDateString('en-GB',{month:'short',year:'numeric',timeZone:'UTC'})}</text>`;}
   $('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#9bc580" stop-opacity=".25"/><stop offset="1" stop-color="#9bc580" stop-opacity="0"/></linearGradient></defs>${grid}<polygon points="${L},${T+height} ${points(a.curve,'value')} ${W-R},${T+height}" fill="url(#fill)"/><polyline points="${points(a.curve,'invested')}" fill="none" stroke="#aab2aa" stroke-width="1.5" stroke-dasharray="4 5"/><polyline points="${points(b.curve,'value')}" fill="none" stroke="#cb8657" stroke-width="2"/><polyline points="${points(a.curve,'value')}" fill="none" stroke="#246b4f" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
   $('chart').setAttribute('aria-label',`Portfolio from ${a.start} to ${a.end}. Strategy value ${money(a.value)}; baseline ${money(b.value)}; contributions ${money(a.invested)}. Full comparison follows.`);
 }
@@ -34,7 +34,7 @@ function render(){
 function run(event){event?.preventDefault();$('error').textContent='';try{
   if(!series||sourceKind!==$('source').value)throw Error('Load a dataset for the selected source before running.');
   const c=config();if(!c.start||!c.end||c.start>=c.end)throw Error('Choose an end date after the start date.');
-  const r=simulate(series,c),b=simulate(series,c,true);result=r;baseline=b;runConfig=c;runLabel=label;render();$('dirty').hidden=true;
+  const r=simulate(series,c),b=simulate(series,c,true);result=r;baseline=b;runConfig=c;runLabel=label;render();$('dirty').hidden=true;if(event&&matchMedia('(max-width:800px)').matches){$('results').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});$('results').focus({preventScroll:true});}
 }catch(e){$('error').textContent=e.message;}}
 function download(name,content){const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);}
 function csvCell(v){let s=String(v??'');if(/^[=+@\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';}
@@ -55,6 +55,7 @@ $('sample').addEventListener('click',()=>download('sip-lab-synthetic-example.csv
 $('export').addEventListener('click',()=>{if(!result)return;const header=['date','action','reason','price','units','amount','tax_reserve','fee','cash_after','source','configuration'];const rows=result.ledger.map(t=>[t.date,t.action,t.reason,t.price,t.units,t.amount,t.tax,t.fee,t.cash,runLabel,JSON.stringify(runConfig)]);download('sip-lab-trades.csv',[header,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n'));});
 document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{$('strategy').value=b.dataset.preset;showRules();dirty();$('workspace').scrollIntoView({behavior:'smooth'});run();}));
 showRules();run();
+let chartWidth=0;new ResizeObserver(entries=>{const width=Math.round(entries[0].contentRect.width);if(width!==chartWidth){chartWidth=width;if(result&&baseline)chart(result,baseline);}}).observe($('chart'));
 async function loadLibrary(){
   try{
     const catalogue=await json('/api/catalogue');
@@ -70,3 +71,4 @@ async function loadLibrary(){
   }catch{ $('library').replaceChildren(new Option('Library temporarily unavailable',''));$('libraryStatus').textContent='You can still search live funds or import a CSV.'; }
 }
 loadLibrary();
+
