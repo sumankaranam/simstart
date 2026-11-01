@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+.cloudflare-auth/
+work/
+.env*
+.dev.vars*
+*.log
+config.local.json
