@@ -4,7 +4,7 @@ let series=demoSeries(),label='Synthetic market · not historical investment per
 const safe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number=id=>Number($(id).value);
 function config(){return {start:$('start').value,end:$('end').value,amount:number('amount'),step:number('step'),stepMonths:number('stepMonths'),strategy:$('strategy').value,schedule:$('schedule').value,dip:number('dip'),rise:number('rise'),sellPct:number('sellPct'),fee:number('fee'),exit:number('exit'),tax:$('tax').value};}
-function showRules(){const s=$('strategy').value;$('scheduleControls').hidden=s!=='sip';$('dipControls').hidden=s==='sip';$('sellControls').hidden=s!=='cycle';}
+function showRules(){const s=$('strategy').value;$('scheduleControls').hidden=s!=='sip';$('dipControls').hidden=s==='sip';$('sellControls').hidden=s!=='cycle';$('dip').disabled=s==='sip';$('rise').disabled=$('sellPct').disabled=s!=='cycle';}
 function dirty(){$('dirty').hidden=false;}
 function chart(a,b){
   const W=Math.max(240,Math.round($('chart').getBoundingClientRect().width)),H=W<500?250:300,L=50,R=12,T=18,B=35,inner=W-L-R,height=H-T-B;
